@@ -1,0 +1,281 @@
+#!/bin/bash
+
+# Heavily based on thoughtbot's laptop script https://github.com/thoughtbot/laptop/blob/master/mac
+#   as well as bignerdranch/macOS-bootstrap
+
+OSX_BOOTSTRAP=${OSX_BOOTSTRAP:-"$HOME/.osx-bootstrap"}
+GIT_REPOS="https://github.com/levous/OSX-Bootstrap.git"
+XCODE_VERSION="13.3.1"
+
+fancy_echo() {
+  local fmt="$1"; shift
+
+  # shellcheck disable=SC2059
+  printf "\n$fmt\n" "$@"
+}
+
+
+shellrc_path() {
+  local path current_shell
+
+  current_shell="$( basename "$SHELL" )"
+
+  if [[ $current_shell = "zsh" ]]; then
+    if [[ -w "$HOME/.zshrc.local" ]]; then
+      path="$HOME/.zshrc.local"
+    else
+      path="$HOME/.zshrc"
+    fi
+  elif [[ "$current_shell" = "bash" ]]; then
+    path="$HOME/.bash_profile"
+  else
+    echo "/dev/stdout"
+    return 1
+  fi
+
+  if [[ ! -e "$path" ]]; then
+      touch "$path"
+  fi
+
+  if [[ ! -w "$path" ]]; then
+    fancy_echo "Cannot write to $path"
+    echo "/dev/stdout"
+    return 1
+  fi
+
+  echo "$path"
+}
+
+
+append_to_shellrc() {
+  local text="$1" rcpath
+  local skip_new_line="${2:-0}"
+
+  rcpath="$(shellrc_path)"
+
+  if ! grep -Fqs "$text" "$rcpath" >/dev/null 2>&1; then
+    if [[ "$skip_new_line" -eq 1 ]]; then
+      printf "%s\n" "$text" >> "$rcpath"
+    else
+      printf "\n%s\n" "$text" >> "$rcpath"
+    fi
+  fi
+}
+
+
+# die MESSAGE: logs MESSAGE and then exits non-zero
+#
+# Example:
+#
+#     writable "$directory" || die "not writable: $directory"
+die() {
+    local message
+
+    # ${FUNCNAME[1]} evaluates to the name of the calling function.
+    message="${FUNCNAME[1]}: fatal error: *** $1"
+
+    echo "$message" 1>&2
+    exit 1
+}
+
+
+announce_editing_shell_runconfig() {
+  startup_path=$(shellrc_path)
+  # shellcheck disable=SC2181
+  if [[ "$?" -ne 0 ]]; then
+    fancy_echo "Don't know how to hack your $SHELL rcfile. Intended changes will be logged using bash syntax; feel free to adapt to your shell."
+  else
+    fancy_echo "Shell startup configuration will be added to: $startup_path"
+  fi
+  append_to_shellrc '# Added by OSX-BOOTSTRAP iOS/Mac Machine Bootstrap Script'
+}
+
+
+ensure_homebrew_prefix_usable() {
+  echo "$FUNCNAME: Your Homebrew prefix is ${HOMEBREW_PREFIX:-/usr/local}. Let's ensure it's usable by Homebrew (it exists as a directory, and you have read access)."
+  HOMEBREW_PREFIX="$(brew --prefix)"
+  if [[ ! -e "$HOMEBREW_PREFIX" ]]; then
+    HOMEBREW_PREFIX="/usr/local"
+  fi
+
+  current_group_name="$(id -ng)"
+  if [[ -d "$HOMEBREW_PREFIX" ]]; then
+    # brew update requires that HOMEBREW_PREFIX be readable.
+    if [[ ! -r "$HOMEBREW_PREFIX" ]]; then
+      # chown -R was taking a glacial age to run,
+      # especially when the actual problem was the Google App Engine installer
+      # had decided that /usr/local itself should be owned by root:wheel.
+      # Thanks, Google!
+      #
+      # The -R looks like it works bottom-up, since it hadn't affected the
+      # actual target directory when I bailed, so let's hit that first
+      # in case the user decides to bail out during.
+      fancy_echo "Your password is required to run:
+    chown $LOGNAME:$current_group_name $HOMEBREW_PREFIX
+    && chown -R $LOGNAME:$current_group_name $HOMEBREW_PREFIX/*"
+      sudo chown "$LOGNAME:$current_group_name" "$HOMEBREW_PREFIX" \
+          && sudo chown -R "$LOGNAME:$current_group_name" "$HOMEBREW_PREFIX" \
+          || die "failed to change ownership of $HOMEBREW_PREFIX"
+    fi
+  else
+    fancy_echo "Your password is required to run:
+    mkdir $HOMEBREW_PREFIX
+    && chflags norestricted $HOMEBREW_PREFIX
+    && chown -R $LOGNAME:$current_group_name $HOMEBREW_PREFIX"
+    sudo mkdir "$HOMEBREW_PREFIX" \
+      && sudo chflags norestricted "$HOMEBREW_PREFIX" \
+      && sudo chown -R "$LOGNAME:$current_group_name" "$HOMEBREW_PREFIX" \
+      || die "failed to make $HOMEBREW_PREFIX usable"
+  fi
+
+  echo "$FUNCNAME: $HOMEBREW_PREFIX should be usable by homebrew now."
+}
+
+
+update_homebrew() {
+  if ! command -v brew >/dev/null; then
+    fancy_echo "$FUNCNAME: Installing Homebrew, a handy OS X package manager (see http://brew.sh)."
+      curl -fsS \
+        'https://raw.githubusercontent.com/Homebrew/install/master/install' | ruby
+
+      append_to_shellrc '# recommended by brew doctor'
+
+      # shellcheck disable=SC2016
+      append_to_shellrc 'export PATH="$HOMEBREW_PREFIX/bin:$PATH"' 1
+
+      export PATH="$HOMEBREW_PREFIX/bin:$PATH"
+  fi
+
+  if brew list | grep -Fq brew-cask; then
+    fancy_echo "$FUNCNAME: Looks like you still have the old brew-cask formula installed. Since December 2015, brew-cask is updated along with Homebrew itself, and the old formula should be installed. Let's take care of that. (If you want to read more, see: https://github.com/caskroom/homebrew-cask/pull/15381)"
+    fancy_echo "Uninstalling old Homebrew-Cask ..."
+    brew uninstall --force brew-cask
+  fi
+
+  echo "$FUNCNAME: Updating local package repository"
+  brew update
+}
+
+find_latest_ruby() {
+  rbenv install -l | grep -v - | tail -1 | sed -e 's/^ *//'
+}
+
+
+clone_repos(){
+  if [ ! -d "$OSX_BOOTSTRAP" ]
+  then
+    echo "cloning repo to $OSX_BOOTSTRAP..."
+    # cp -r ./ "$OSX_BOOTSTRAP"
+    git clone -b main "$GIT_REPOS" "$OSX_BOOTSTRAP"
+  fi
+}
+
+configure_osx_bootstrap() {
+  brew install git
+
+  clone_repos
+
+  if [[ "$1" == "sample" ]]
+    then
+      echo "Copying .Brewfile and .bootstrap.local from $OSX_BOOTSTRAP/sample"
+      cp "$OSX_BOOTSTRAP/sample/.Brewfile" "$OSX_BOOTSTRAP/sample/.bootstrap.local" ~/
+  fi
+}
+
+
+install_packages() {
+  
+
+  cd "$OSX_BOOTSTRAP" || (echo "$OSX_BOOTSTRAP couldn't be found exiting" && exit)
+
+  echo "$FUNCNAME: Installing/updating essentials:"
+  cat ./Brewfile
+  brew bundle --file=./Brewfile --global --verbose
+
+  if [[ -r "$HOME/.Brewfile" ]]; then
+    echo "$FUNCNAME: Installing/upgrading formulae listed in $HOME/.Brewfile."
+    brew bundle --global --verbose
+  fi
+}
+
+
+# NOTE: This script is not tested.  
+install_xcode() {
+  echo "Installing XCode $XCODE_VERSION"
+  xcodes install $XCODE_VERSION --experimental-unxip
+}
+
+
+install_xcode_cli_tools() {
+  echo "Installing XCode Commandline Tools"
+  xcode-select --install > /dev/null 2>&1
+  if [ 0 == $? ]; then
+      sleep 1
+      osascript <<EOD
+tell application "System Events"
+    tell process "Install Command Line Developer Tools"
+        keystroke return
+        click button "Agree" of window "License Agreement"
+    end tell
+end tell
+EOD
+  else
+      echo "Command Line Developer Tools are already installed!"
+  fi
+}
+
+
+xcode_select_cli_tools() {
+  sudo xcode-select --switch "/Applications/Xcode-$XCODE_VERSION.app/Contents/Developer/"
+  sudo xcodebuild -license
+}
+
+
+run_bootstrap_local() {
+  if [[ -f "$HOME/.bootstrap.local" ]]; then
+    fancy_echo "Running your customizations from ~/.bootstrap.local..."
+    # shellcheck disable=SC1091
+    . "$HOME/.bootstrap.local"
+  else 
+    fancy_echo "~/.bootstrap.local not found.  No customizations to run."
+  fi
+}
+
+install_or_update_gem() {
+  if gem list "$1" --installed > /dev/null; then
+    gem update "$@"
+  else
+    gem install "$@"
+  fi
+  rbenv rehash
+}
+
+main() {
+
+  INSTALL_PARM=$1
+
+  if [[ "$1" == "reset-with-sample" ]]
+  then
+    fancy_echo "Deleting ~/.Brewfile and ~/.bootstrap.local to run from scratch"
+    rm -rf "$OSX_BOOTSTRAP"
+    rm ~/.Brewfile
+    rm ~/.bootstrap.local
+    INSTALL_PARM="sample"
+  else 
+    fancy_echo "This bootstrap is about to save you hours of install tinkering..."
+  fi
+
+  announce_editing_shell_runconfig
+  ensure_homebrew_prefix_usable
+  update_homebrew
+  configure_osx_bootstrap "$INSTALL_PARM"
+  install_packages 
+  # Install XCode - Required by some Brew packages
+  # Not yet optimized to install only when not yet installed
+  # install_xcode
+  # install_xcode_cli_tools
+  # xcode_select_cli_tools
+  run_bootstrap_local
+}
+
+main "$@"
