@@ -160,13 +160,38 @@ find_latest_ruby() {
   rbenv install -l | grep -v - | tail -1 | sed -e 's/^ *//'
 }
 
+adopt_latest_ruby() {
+  fancy_echo "$FUNCNAME: Activating rbenv"
+  # shellcheck disable=SC2016
+  append_to_shellrc 'eval "$(rbenv init - --no-rehash)"' 1
+  eval "$(rbenv init -)"
+
+  ruby_version="$(find_latest_ruby)"
+  echo "$FUNCNAME: Latest ruby is $ruby_version."
+
+  if ! rbenv versions | grep -Fq "$ruby_version"; then
+    echo "$FUNCNAME: Ruby $ruby_version is not installed. Installing..."
+    RUBY_CONFIGURE_OPTS=--with-openssl-dir="$HOMEBREW_PREFIX/opt/openssl" \
+      rbenv install -s "$ruby_version"
+  fi
+
+  echo "$FUNCNAME: Setting global and shell Ruby versions to $ruby_version"
+  rbenv global "$ruby_version"
+  rbenv shell "$ruby_version"
+
+  echo "$FUNCNAME: Updating system gems..."
+  gem update --system
+
+  echo "$FUNCNAME: All done. Welcome to the brave new world of Ruby $ruby_version."
+}
+
 
 clone_repos(){
   if [ ! -d "$OSX_BOOTSTRAP" ]
   then
     echo "cloning repo to $OSX_BOOTSTRAP..."
-    # cp -r ./ "$OSX_BOOTSTRAP"
-    git clone -b main "$GIT_REPOS" "$OSX_BOOTSTRAP"
+    cp -r ./ "$OSX_BOOTSTRAP"
+    # git clone -b main "$GIT_REPOS" "$OSX_BOOTSTRAP"
   fi
 }
 
@@ -190,7 +215,7 @@ install_packages() {
 
   echo "$FUNCNAME: Installing/updating essentials:"
   cat ./Brewfile
-  brew bundle --file=./Brewfile --global --verbose
+  brew bundle --file=./Brewfile --verbose
 
   if [[ -r "$HOME/.Brewfile" ]]; then
     echo "$FUNCNAME: Installing/upgrading formulae listed in $HOME/.Brewfile."
@@ -270,6 +295,7 @@ main() {
   update_homebrew
   configure_osx_bootstrap "$INSTALL_PARM"
   install_packages 
+  adopt_latest_ruby
   # Install XCode - Required by some Brew packages
   # Not yet optimized to install only when not yet installed
   # install_xcode

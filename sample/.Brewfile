@@ -10,7 +10,6 @@ tap "teamookla/speedtest"
 tap "romkatv/powerlevel10k"
 
 # GNU core utilities (those that come with OS X are outdated)
-
 brew 'coreutils'
 brew 'gawk'
 brew 'gnu-indent'
@@ -20,11 +19,14 @@ brew 'gnutls'
 brew 'grep'
 
 # GNU `find`, `locate`, `updatedb`, and `xargs`, g-prefixed
-
 brew 'findutils'
+
+# SVN used by some casks
+brew "svn"
 
 # Brew packages
 brew 'awscli'
+brew "cocoapods" # used for flutter
 brew "dvc"
 # Fork visual git tool
 #cask "fork" 
@@ -53,6 +55,7 @@ brew "romkatv/powerlevel10k/powerlevel10k"
 # App Casks
 
 cask "1password"
+cask "android-studio"
 # rogueamoeba sys audio recorder
 cask "audio-hijack"
 #cask "authy"
@@ -69,9 +72,8 @@ cask "figma"
 # rogueamoeba audio editing app
 cask "fission"
 # Flutter
+#cask "temurin" #Eclipse Temurin Java Development Kit
 cask "android-studio"
-cask "android-SDK"
-cask "android-ndk"
 cask "flutter"
 # End Flutter
 cask "grammarly"
