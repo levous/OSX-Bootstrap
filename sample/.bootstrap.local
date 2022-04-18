@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# version config
+
+NODE_VERSION="17.9.0"
+FLUTTER_PATH="usr/local/Caskroom/flutter/2.10.3/flutter"
+
+# Begin script
+
+configure_shell() {
+
+	RCPATH="$(shellrc_path)"
+	BEGIN_EDIT_COMMENT="# BEGIN OSX-BOOTSTRAP Tools and Paths #########################"
+
+	echo "Checking $RCPATH..."
+	if ! grep -Fqs "$BEGIN_EDIT_COMMENT" "$rcpath" >/dev/null 2>&1; then
+
+		echo "Updating $RCPATH with PATH and tools init..."
+
+		# write the begin edit marker comment
+		printf "\n%s\n" "$BEGIN_EDIT_COMMENT" >> "$RCPATH"
+		# write the shell rc path variable 
+		printf '\nexport SHELL_RC_PATH="~/.zshrc" # used in echo statements only\n' >> "$RCPATH"
+		# write the rest as a multiline with no variable escaping
+		cat >> "$RCPATH" << \EOT
+export FLUTTER_SDK="$HOME/dev/flutter-sdk/bin"
+export NODE_ENV="$HOME/.nodenv/bin"
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$NODE_ENV:$FLUTTER_SDK:$PATH"
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init --path)"
+else
+  echo "WARNING: pyenv not found in path.  See $SHELL_RC_PATH"
+fi
+if command -v nodenv 1>/dev/null 2>&1; then
+  eval "$(nodenv init -)"
+else
+  echo "WARNING: nodeenv  not found in path.  See $SHELL_RC_PATH"
+fi
+
+# zsh highlighting and autocomplete
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# zsh powerlevel10k
+source /usr/local/opt/powerlevel10k/powerlevel10k.zsh-theme
+
+# ## END OSX-BOOTSTRAP Tools and Paths #########################
+EOT
+	else
+		echo "Found 'OSX-BOOTSTRAP' present in $RCPATH.  Not making changes."
+	fi
+}
+
+install_node() {
+	nodenv install $NODE_VERSION
+	nodenv global $NODE_VERSION
+}
+
+install_npm_tools() {
+	# Allows wrapping website apps as electron-based native apps
+	npm install -g nativefier
+	nativefier https://mail.google.com/mail/u/0/#inbox
+	mv ./GMail-darwin-x64 /Applications
+}
+
+install_vscode_extensions() {
+
+	VSCODE_EXTENSIONS=(
+		asciidoctor.asciidoctor-vscode
+		DavidAnson.vscode-markdownlint
+		ms-azuretools.vscode-docker
+		DotJoshJohnson.xml
+		EditorConfig.EditorConfig
+		Equinusocio.vsc-material-theme
+		anseki.vscode-color
+		christian-kohler.npm-intellisense
+		christian-kohler.path-intellisense
+		codezombiech.gitignore
+		dbaeumer.jshint
+		eg2.vscode-npm-script
+		ms-toolsai.jupyter
+		ms-toolsai.jupyter-keymap
+		ms-toolsai.jupyter-renderers
+		ms-python.vscode-pylance
+		ms-python.python
+		littlefoxteam.vscode-python-test-adapter
+		ms-vscode.test-adapter-converter
+		hbenl.vscode-test-explorer
+		vscode-icons-team.vscode-icons
+		zhuangtongfa.Material-theme
+		Dart-Code.flutter
+	)
+
+	if hash code &>/dev/null; then
+		echo "Installing VS Code extensions..."
+		for i in "${VSCODE_EXTENSIONS[@]}"; do
+			code --install-extension "$i"
+		done
+	else 
+		echo "VS Code not installed, can't install extensions.  Check Brewfile and ensure VS Code is included."
+	fi
+}
+
+configure_osx() {
+	echo "Configuring OSX settings..."
+
+	# Show filename extensions by default
+	defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+
+	# Expanded Save menu
+	defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+	defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+
+	# Default directories
+	WORKSPACE="$HOME/dev"
+	echo "Creating folder structure..."
+	[[ ! -d $WORKSPACE ]] && mkdir $WORKSPACE
+}
+
+install_cocoapods() {
+	# used for Flutter
+	gem install cocoapods
+}
+
+install_flutter_tools() {
+	# This may require running android stydio manually to set up the first time
+	~/Library/Android/sdk/tools/bin/sdkmanager --install "cmdline-tools;latest"
+}
+
+
+local_main() {
+	echo "Cleaning up Brew..."
+	brew cleanup
+	configure_shell
+	install_node
+	install_npm_tools
+	install_vscode_extensions
+	configure_osx
+	install_cocoapods
+	install_flutter_tools
+  	echo "Bootstrapping complete"
+}
+
+# Used for development
+local_test() {
+	configure_shell
+}
+
+local_main
