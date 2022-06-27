@@ -16,12 +16,17 @@ Shell::
 Operating System::
 * OS X >= 10.10 
 
+Commandline Tools
+* Script will invoke `xcode-select --install`, when necessary, but requires user interactivity
+
 == What it sets up
 Mac OS X tools::
 * http://brew.sh/[Homebrew] for managing operating system libraries.
 Unix tools::
 * https://git-scm.com[Git] for version control
 * https://www.openssl.org[OpenSSL] for Transport Layer Security (TLS)
+Ruby 
+* Installs and uses `rbenv` to install latest Ruby
 
 == Install
 Clone, review, then execute the script:
@@ -31,19 +36,20 @@ Clone, review, then execute the script:
 sh bootstrap
 -----
 
-To install with samples provided in the repo run
+To install with samples provided in the repo, run
 
 [source,bash]
 -----
 sh bootstrap sample
 -----
+This will copy the files from the sample directory to `~/`
 
-== Customize
-Customize in 
+== Customize 
+Customize the script in 
 * `~/.bootstrap.local`
 * `~/.Brewfile`
 
-These files are left in place and can be edited locally for further customization.
+These files are left in place, post install, and can be edited, locally, for further customization.
 
 === Local Brewfile
 
@@ -69,9 +75,9 @@ mas '1Password', id: 443987910
 mas 'Xcode', id: 497799835
 -----
 
-=== bootstrap.local
+=== .bootstrap.local
 
-Your `bootstrap.local` is run at the end of the bootstrap script.
+Your `~/.bootstrap.local` is run at the end of the bootstrap script.
 Put your customizations there.
 An example local script could look like this:
 
@@ -84,7 +90,9 @@ echo "Add your changes here"
 -----
 
 Write your customizations such that they can be run safely more than once.
-See the `bootstrap` script for examples.
+See the `bootstrap` script for examples.  
+
+The `./sample/.bootstrap.local` script will install nodenv and node, cocoapods, configure `~/.zshrc` with path and tools init, install VS Code extensions, etc.
 
 Script functions such as `append_to_shellrc`, `fancy_echo` and `install_or_update_gem` can be used in your `~/.bootstrap.local`.
 

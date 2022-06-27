@@ -135,15 +135,12 @@ ensure_homebrew_prefix_usable() {
 update_homebrew() {
   if ! command -v brew >/dev/null; then
     fancy_echo "$FUNCNAME: Installing Homebrew, a handy OS X package manager (see http://brew.sh)."
-      curl -fsS \
-        'https://raw.githubusercontent.com/Homebrew/install/master/install' | ruby
+    sudo curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | bash
 
-      append_to_shellrc '# recommended by brew doctor'
+    append_to_shellrc '# recommended by brew doctor'
+    append_to_shellrc 'eval "$($HOMEBREW_PREFIX/bin/brew shellenv)\"'
+    append_to_shellrc 'export PATH="$HOMEBREW_PREFIX/bin:$PATH"' 1
 
-      # shellcheck disable=SC2016
-      append_to_shellrc 'export PATH="$HOMEBREW_PREFIX/bin:$PATH"' 1
-
-      export PATH="$HOMEBREW_PREFIX/bin:$PATH"
   fi
 
   if brew list | grep -Fq brew-cask; then
@@ -291,6 +288,7 @@ main() {
   fi
 
   announce_editing_shell_runconfig
+  install_xcode_cli_tools
   ensure_homebrew_prefix_usable
   update_homebrew
   configure_osx_bootstrap "$INSTALL_PARM"

@@ -8,6 +8,7 @@ tap "homebrew/cask-drivers"
 tap "homebrew/services"
 tap "teamookla/speedtest"
 tap "romkatv/powerlevel10k"
+tap "levous/homebrew-tap"
 
 # GNU core utilities (those that come with OS X are outdated)
 brew 'coreutils'
@@ -32,6 +33,7 @@ brew "dvc"
 #cask "fork" 
 brew "gh"
 brew "git-extras"
+brew "gitignore"
 brew "gnupg"
 brew "go"
 brew "graphicsmagick"
@@ -65,7 +67,7 @@ cask "beyond-compare"
 cask "discord"
 cask "docker"
 cask "dropbox"
-cask "obs"
+cask "canon-eos-webcam-utility"
 # rogueamoeba audio sound effects app
 cask "farrago"
 cask "figma"
@@ -73,6 +75,7 @@ cask "figma"
 cask "fission"
 # Flutter
 #cask "temurin" #Eclipse Temurin Java Development Kit
+cask "google-chrome"
 cask "android-studio"
 cask "flutter"
 # End Flutter
@@ -80,17 +83,24 @@ cask "grammarly"
 cask "handbrake"
 cask "iterm2"
 # krisp.ai noise remover for calls
-cask "krisp"
+#cask "krisp"
+cask "licecap"
 # Mac markdown editor
 cask "macdown"
 cask "notion"
+cask "obs"
+cask "opera"
+cask "p4v" # perforce p4merge
 cask "pycharm"
 cask "postman"
+cask "qlmarkdown" # to use the Quick Look preview you must launch the application at least once.
 cask "signal"
 cask "sketch"
 cask "slack"
 cask "spotify"
-# Tower visual git tool
+# visual git tool (free)
+cask "sourcetree"
+# Tower visual git tool (awesome but not free)
 #cask "tower" 
 cask "visual-studio-code"
 cask "zoom"
