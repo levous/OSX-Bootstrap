@@ -2,7 +2,7 @@
 
 # version config
 
-NODE_VERSION="17.9.0"
+NODE_VERSION="18.4.0"
 
 # Begin script
 
@@ -22,7 +22,7 @@ configure_shell() {
 		printf '\nexport SHELL_RC_PATH="~/.zshrc" # used in echo statements only\n' >> "$RCPATH"
 		# write the rest as a multiline with no variable escaping
 		cat >> "$RCPATH" << \EOT
-export FLUTTER_SDK="$(brew --prefix)/Caskroom/flutter/2.10.4/flutter"
+export FLUTTER_SDK="$(brew --prefix)/Caskroom/flutter/3.0.3/flutter"
 export NODE_ENV="$HOME/.nodenv/bin"
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$NODE_ENV:$FLUTTER_SDK:$PATH"
